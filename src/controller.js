@@ -4,7 +4,6 @@ import { createClient } from 'redis';
 async function Weather(city) {
     const client = createClient();
     
-    // Handle Redis connection errors
     client.on('error', (err) => console.log('Redis Client Error', err));
     await client.connect();
 
@@ -28,7 +27,7 @@ async function Weather(city) {
 
     try {
         // Try to retrieve the 'temp' field from Redis for the key 'city'
-        const redisData = await client.hGet(city, 'temp');
+        const redisData = await client.hGet(city);
 
         // If Redis returns null, the key or field does not exist
         if (redisData === null) {
@@ -67,10 +66,9 @@ async function Weather(city) {
 async function getWeather(req, res) {
     const city = req.params.CITY;
     try {
-        const weatherData = await Weather(city); // Await the Weather function
-        return res.send(weatherData); // Send the weather data as response
+        const weatherData = await Weather(city); 
+        return res.send(weatherData); 
     } catch (error) {
-        // Handle any errors that occurred in Weather function
         return res.status(500).send({ message: "An error occurred while fetching weather data.", error: error.message });
     }
 }
