@@ -3,10 +3,16 @@ import { createClient } from 'redis';
 import express from "express";
 import fetch from "node-fetch";
 import router from './routes.js'; // For default export
+import cors from 'cors';
 
-// Load environment variables from the .env file
+
+
 dotenv.config({ path: './.env' });
 const app=express();
+app.use(cors());
+
+
+
 
 app.use("/api/v1",router);
 

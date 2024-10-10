@@ -7,7 +7,7 @@ async function Weather(city) {
     client.on('error', (err) => console.log('Redis Client Error', err));
     await client.connect();
 
-    let API = process.env.API; 
+    const API = process.env.API; 
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API}`;
     console.log('Constructed URL:', url);
 
@@ -26,32 +26,27 @@ async function Weather(city) {
     }
 
     try {
-        // Try to retrieve the 'temp' field from Redis for the key 'city'
-        const redisData = await client.hGet(city);
+        // Try to retrieve the weather data from Redis for the specified city
+        const redisData = await client.get(city);
 
-        // If Redis returns null, the key or field does not exist
+        // If Redis returns null, the key does not exist
         if (redisData === null) {
             console.log(`No data in Redis for city: ${city}, fetching from API...`);
             const weatherData = await getData(); // Fetch data from the API
             if (weatherData) {
-                // Store weather data in Redis
-                await client.hSet(city, {
-                    temp: weatherData.main.temp.toString(),
-                    feels_like: weatherData.main.feels_like.toString(),
-                    humidity: weatherData.main.humidity.toString(),
-                    description: weatherData.weather[0].description
+                // Store weather data in Redis as a stringified JSON
+                await client.set(city, JSON.stringify(weatherData), {
+                    EX: 100 // Set expiration time (in seconds)
                 });
                 console.log(`Weather data for ${city} stored in Redis.`);
-                console.log('Temperature:', weatherData.main.temp);
                 return weatherData; // Return the weather data
             }
         } else {
-            console.log(`Temperature for ${city} from Redis:`, redisData);
-            // Retrieve and return full data instead of just temp
-            return {
-                temp: redisData,
-                // Add other Redis fields if necessary, or simply return as is
-            };
+            // Parse the data from Redis and log it
+            const parsedData = JSON.parse(redisData);
+            console.log(`Weather data for ${city} retrieved from Redis:`, parsedData);
+
+            return parsedData; // Return the parsed data from Redis
         }
     } catch (error) {
         // Handle any unexpected errors
@@ -64,10 +59,10 @@ async function Weather(city) {
 }
 
 async function getWeather(req, res) {
-    const city = req.params.CITY;
+    const city = req.params.CITY; // Get the city from the request parameters
     try {
-        const weatherData = await Weather(city); 
-        return res.send(weatherData); 
+        const weatherData = await Weather(city); // Get the weather data
+        return res.send(weatherData); // Send the weather data as the response
     } catch (error) {
         return res.status(500).send({ message: "An error occurred while fetching weather data.", error: error.message });
     }
